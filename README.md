@@ -36,6 +36,18 @@ MS COCO
 
 ## Installation
 
+<details open>
+<summary>using conda environment</summary>
+
+```bash
+conda create -n yolov7 python=3.9
+conda activate yolov7
+pip install -r requirements.txt  # install
+pip install torch==1.12.1+cu116 torchvision==0.13.1+cu116 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu116
+```
+
+</details>
+
 Docker environment (recommended)
 <details><summary> <b>Expand</b> </summary>
 
