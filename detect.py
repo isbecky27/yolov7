@@ -162,7 +162,7 @@ def detect(opt, save_img=False):
         #print(f"Results saved to {save_dir}{s}")
 
     print(f'Done. ({time.time() - t0:.3f}s)')
-    return bbox
+    return im0, bbox
 
 
 if __name__ == '__main__':
