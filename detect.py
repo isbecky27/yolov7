@@ -18,9 +18,11 @@ global global_model
 global_model = None
 global global_modelc
 global_modelc = None
+global global_stride
+global_stride = None
 
 def init_global_model(opt) -> None:
-    global global_model
+    global global_model, global_stride
     if global_model is not None:
         return
     
@@ -32,8 +34,9 @@ def init_global_model(opt) -> None:
     device = select_device(opt.device)
     half = device.type != 'cpu'  # half precision only supported on CUDA
     global_model = attempt_load(weights, map_location=device)  # load FP32 model
-    stride = int(global_model.stride.max())  # model stride
-    imgsz = check_img_size(imgsz, s=stride)  # check img_size
+    global_stride = int(global_model.stride.max())  # model stride
+    imgsz = check_img_size(imgsz, s=global_stride)  # check img_size
+    global_stride
     if trace:
         global_model = TracedModel(global_model, device, opt.img_size)
     if half:
@@ -42,13 +45,11 @@ def init_global_model(opt) -> None:
     global global_modelc
     if global_modelc is not None:
         return
-    global_modelc = load_classifier(name='resnet101', n=2)  # initialize
-    global_modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
+    # global_modelc = load_classifier(name='resnet101', n=2)  # initialize
+    # global_modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
 
     if device.type != 'cpu':
         global_model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(global_model.parameters())))  # run once
-
-
     
 def detect(opt, save_img=False):
     global global_model
@@ -80,6 +81,7 @@ def detect(opt, save_img=False):
             model.half()  # to FP16
     else:
         model = global_model
+        stride = global_stride
         device = select_device(opt.device)
         half = device.type != 'cpu'
     # Second-stage classifier
@@ -160,7 +162,7 @@ def detect(opt, save_img=False):
                 for c in det[:, -1].unique():
                     n = (det[:, -1] == c).sum()  # detections per class
                     s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-                print(det)
+                # print(det)
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     if save_txt:  # Write to file
@@ -175,7 +177,7 @@ def detect(opt, save_img=False):
                         plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
 
             # Print time (inference + NMS)
-            print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
+            # print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
 
             # Stream results
             if view_img:
@@ -186,7 +188,7 @@ def detect(opt, save_img=False):
             if save_img:
                 if dataset.mode == 'image':
                     cv2.imwrite(save_path, im0)
-                    print(f" The image with the result is saved in: {save_path}")
+                    # print(f" The image with the result is saved in: {save_path}")
                 else:  # 'video' or 'stream'
                     if vid_path != save_path:  # new video
                         vid_path = save_path
@@ -206,7 +208,7 @@ def detect(opt, save_img=False):
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         #print(f"Results saved to {save_dir}{s}")
 
-    print(f'Done. ({time.time() - t0:.3f}s)')
+    # print(f'Done. ({time.time() - t0:.3f}s)')
     return im0, bbox
 
 
