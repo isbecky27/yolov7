@@ -14,8 +14,45 @@ from utils.general import check_img_size, check_requirements, check_imshow, non_
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
+global global_model
+global_model = None
+global global_modelc
+global_modelc = None
 
+def init_global_model(opt) -> None:
+    global global_model
+    if global_model is not None:
+        return
+    
+    weights, view_img, save_txt, imgsz, trace = opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
+    save_img = not opt.nosave and not opt.source.endswith('.txt')  # save inference images
+    webcam = opt.source.isnumeric() or opt.source.endswith('.txt') or opt.source.lower().startswith(
+        ('rtsp://', 'rtmp://', 'http://', 'https://'))
+    set_logging()
+    device = select_device(opt.device)
+    half = device.type != 'cpu'  # half precision only supported on CUDA
+    global_model = attempt_load(weights, map_location=device)  # load FP32 model
+    stride = int(global_model.stride.max())  # model stride
+    imgsz = check_img_size(imgsz, s=stride)  # check img_size
+    if trace:
+        global_model = TracedModel(global_model, device, opt.img_size)
+    if half:
+        global_model.half()
+
+    global global_modelc
+    if global_modelc is not None:
+        return
+    global_modelc = load_classifier(name='resnet101', n=2)  # initialize
+    global_modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
+
+    if device.type != 'cpu':
+        global_model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(global_model.parameters())))  # run once
+
+
+    
 def detect(opt, save_img=False):
+    global global_model
+    global global_modelc
     source, weights, view_img, save_txt, imgsz, trace = opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size, not opt.no_trace
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
@@ -25,27 +62,35 @@ def detect(opt, save_img=False):
     save_dir = Path(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))  # increment run
     (save_dir / 'labels' if save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 
-    # Initialize
-    set_logging()
-    device = select_device(opt.device)
-    half = device.type != 'cpu'  # half precision only supported on CUDA
+    if global_model is None:
+        # Initialize
+        set_logging()
+        device = select_device(opt.device)
+        half = device.type != 'cpu'  # half precision only supported on CUDA
 
-    # Load model
-    model = attempt_load(weights, map_location=device)  # load FP32 model
-    stride = int(model.stride.max())  # model stride
-    imgsz = check_img_size(imgsz, s=stride)  # check img_size
+        # Load model
+        model = attempt_load(weights, map_location=device)  # load FP32 model
+        stride = int(model.stride.max())  # model stride
+        imgsz = check_img_size(imgsz, s=stride)  # check img_size
 
-    if trace:
-        model = TracedModel(model, device, opt.img_size)
+        if trace:
+            model = TracedModel(model, device, opt.img_size)
 
-    if half:
-        model.half()  # to FP16
-
+        if half:
+            model.half()  # to FP16
+    else:
+        model = global_model
+        device = select_device(opt.device)
+        half = device.type != 'cpu'
     # Second-stage classifier
     classify = False
-    if classify:
-        modelc = load_classifier(name='resnet101', n=2)  # initialize
-        modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
+
+    if global_modelc is None:
+        if classify:
+            modelc = load_classifier(name='resnet101', n=2)  # initialize
+            modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=device)['model']).to(device).eval()
+    else:
+        modelc = global_modelc
 
     # Set Dataloader
     vid_path, vid_writer = None, None
