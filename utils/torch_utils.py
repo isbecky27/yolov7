@@ -82,7 +82,7 @@ def select_device(device='', batch_size=None):
     else:
         s += 'CPU\n'
 
-    logger.info(s.encode().decode('ascii', 'ignore') if platform.system() == 'Windows' else s)  # emoji-safe
+    # logger.info(s.encode().decode('ascii', 'ignore') if platform.system() == 'Windows' else s)  # emoji-safe
     return torch.device('cuda:0' if cuda else 'cpu')
 
 

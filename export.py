@@ -72,19 +72,19 @@ if __name__ == '__main__':
 
     # TorchScript export
     try:
-        print('\nStarting TorchScript export with torch %s...' % torch.__version__)
+        # print('\nStarting TorchScript export with torch %s...' % torch.__version__)
         f = opt.weights.replace('.pt', '.torchscript.pt')  # filename
         ts = torch.jit.trace(model, img, strict=False)
         ts.save(f)
-        print('TorchScript export success, saved as %s' % f)
+        # print('TorchScript export success, saved as %s' % f)
     except Exception as e:
-        print('TorchScript export failure: %s' % e)
+        # print('TorchScript export failure: %s' % e)
 
     # CoreML export
     try:
         import coremltools as ct
 
-        print('\nStarting CoreML export with coremltools %s...' % ct.__version__)
+        # print('\nStarting CoreML export with coremltools %s...' % ct.__version__)
         # convert model from torchscript and apply pixel scaling as per detect.py
         ct_model = ct.convert(ts, inputs=[ct.ImageType('image', shape=img.shape, scale=1 / 255.0, bias=[0, 0, 0])])
         bits, mode = (8, 'kmeans_lut') if opt.int8 else (16, 'linear') if opt.fp16 else (32, None)
@@ -98,7 +98,7 @@ if __name__ == '__main__':
 
         f = opt.weights.replace('.pt', '.mlmodel')  # filename
         ct_model.save(f)
-        print('CoreML export success, saved as %s' % f)
+        # print('CoreML export success, saved as %s' % f)
     except Exception as e:
         print('CoreML export failure: %s' % e)
                      
@@ -202,4 +202,4 @@ if __name__ == '__main__':
         print('ONNX export failure: %s' % e)
 
     # Finish
-    print('\nExport complete (%.2fs). Visualize with https://github.com/lutzroeder/netron.' % (time.time() - t))
+    # print('\nExport complete (%.2fs). Visualize with https://github.com/lutzroeder/netron.' % (time.time() - t))
