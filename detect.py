@@ -215,14 +215,14 @@ def detect(opt, save_img=False):
     # print(f'Done. ({time.time() - t0:.3f}s)')
     return im0, bbox, time.time() - t0
 
-def detect_simple(opt, path, img0):
+def detect_simple(opt, path, img0, frame):
 
-    source, save_txt, save_dir = opt.source, opt.save_txt, opt.save_dir
+    source, save_txt, save_dir, dataset_mode = opt.source, opt.save_txt, opt.save_dir, opt.dataset_mode
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
-   
+
     p = Path(path)  # to Path
     save_path = str(save_dir / p.name)  # img.jpg
-    txt_path = str(save_dir / 'labels' / p.stem) # + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
+    txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset_mode == 'image' else f'_{str(frame).zfill(6)}')  # img.txt
 
     # Padded resize
     img = letterbox(img0, imgsz, stride=stride)[0]
@@ -281,7 +281,10 @@ def detect_simple(opt, path, img0):
                     plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
                 
                 if save_img:
-                    cv2.imwrite(save_path, im0)
+                    if dataset_mode == 'video':
+                        cv2.imwrite(f'{save_dir}/{str(frame).zfill(6)}.jpg', im0)
+                    else:
+                        cv2.imwrite(save_path, im0)
 
                 bbox.append([i.item() for i in xyxy])
         
