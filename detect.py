@@ -306,18 +306,19 @@ def detect_simple(opt, path, img0, frame):
 
             # Write results
             for *xyxy, conf, cls in reversed(det):
+                valid = filter(xyxy,im0)
+                if not valid: continue
+                
                 if save_txt:  # Write to file
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
                     line = (cls, *xywh, conf) if opt.save_conf else (cls, *xyxy)  # label format
                     with open(txt_path + '.txt', 'a') as f:
                         f.write(('%g ' * len(line)).rstrip() % line + '\n')
-                
+
                 draw_bbox = True
                 if draw_bbox: # Draw Bounding Boxes
                     label = f'{names[int(cls)]} {conf:.2f}'
-                    plot = filter(xyxy,im0)    
-                    if plot == True:
-                        plot_one_box(xyxy, im0, label=label, color=(0, 0, 255), line_thickness=2)
+                    plot_one_box(xyxy, im0, label=label, color=(0, 0, 255), line_thickness=2)
                 
                 if save_img:
                     if dataset_mode == 'video':
