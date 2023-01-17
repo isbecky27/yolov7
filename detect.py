@@ -278,7 +278,7 @@ def detect_simple(opt, path, img0, frame):
                 draw_bbox = True
                 if draw_bbox: # Draw Bounding Boxes
                     label = f'{names[int(cls)]} {conf:.2f}'
-                    plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=1)
+                    plot_one_box(xyxy, im0, label=label, color=(0, 0, 255), line_thickness=2)
                 
                 if save_img:
                     if dataset_mode == 'video':
@@ -287,7 +287,12 @@ def detect_simple(opt, path, img0, frame):
                         cv2.imwrite(save_path, im0)
 
                 bbox.append([i.item() for i in xyxy])
-        
+    if bbox == [] and save_img:
+        if dataset_mode == 'video':
+            cv2.imwrite(f'{save_dir}/{str(frame).zfill(6)}.jpg', im0)
+        else:
+            cv2.imwrite(save_path, im0)
+
     # print(f'Done. ({time.time() - t0:.3f}s)')
     return im0, bbox
 
