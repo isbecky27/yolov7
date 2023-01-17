@@ -215,6 +215,43 @@ def detect(opt, save_img=False):
     # print(f'Done. ({time.time() - t0:.3f}s)')
     return im0, bbox, time.time() - t0
 
+def filter(xyxy,img):
+    left = int(xyxy[0].item())
+    right= int(xyxy[2].item())
+    up = int(xyxy[1].item())
+    down =  int(xyxy[3].item())
+    area = (right-left)*(down-up)
+    if area == 0:
+        return False
+
+    bbox = img[up:down,left:right]
+    crop = cv2.cvtColor(bbox,cv2.COLOR_BGR2HSV)
+    crop = torch.from_numpy(crop)
+    croplow = crop.clone()
+    crophigh = crop.clone()
+
+    croplowg = torch.ge(croplow,torch.Tensor([0,100,60]))
+    croplowl = torch.le(croplow,torch.Tensor([15,255,255]))
+    croplowg = torch.all(croplowg,dim=2)
+    croplowl = torch.all(croplowl,dim=2)
+    reslow = torch.logical_and(croplowl, croplowg)
+
+
+    crophighg = torch.ge(crophigh,torch.Tensor([145,100,60]))
+    crophighl = torch.le(crophigh,torch.Tensor([179,255,255]))
+    crophighg = torch.all(crophighg,dim=2)
+    crophighl = torch.all(crophighl,dim=2)
+    reshigh = torch.logical_and(crophighg, crophighl)
+
+
+    res = torch.logical_or(reslow, reshigh)
+    res = torch.sum(res==True).item()
+    ratio = res/area
+    if ratio >= 0.3:
+        return True
+    else:
+        return False
+
 def detect_simple(opt, path, img0, frame):
 
     source, save_txt, save_dir, dataset_mode = opt.source, opt.save_txt, opt.save_dir, opt.dataset_mode
@@ -278,7 +315,9 @@ def detect_simple(opt, path, img0, frame):
                 draw_bbox = True
                 if draw_bbox: # Draw Bounding Boxes
                     label = f'{names[int(cls)]} {conf:.2f}'
-                    plot_one_box(xyxy, im0, label=label, color=(0, 0, 255), line_thickness=2)
+                    plot = filter(xyxy,im0)    
+                    if plot == True:
+                        plot_one_box(xyxy, im0, label=label, color=(0, 0, 255), line_thickness=2)
                 
                 if save_img:
                     if dataset_mode == 'video':
