@@ -10,8 +10,8 @@ import numpy as np
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages, letterbox
-from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
-    scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
+from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression,non_max_suppression_with_red_ratio, apply_classifier, \
+    scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path,filter
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
@@ -215,42 +215,7 @@ def detect(opt, save_img=False):
     # print(f'Done. ({time.time() - t0:.3f}s)')
     return im0, bbox, time.time() - t0
 
-def filter(xyxy,img):
-    left = int(xyxy[0].item())
-    right= int(xyxy[2].item())
-    up = int(xyxy[1].item())
-    down =  int(xyxy[3].item())
-    area = (right-left)*(down-up)
-    if area == 0:
-        return False
 
-    bbox = img[up:down,left:right]
-    crop = cv2.cvtColor(bbox,cv2.COLOR_BGR2HSV)
-    crop = torch.from_numpy(crop)
-    croplow = crop.clone()
-    crophigh = crop.clone()
-
-    croplowg = torch.ge(croplow,torch.Tensor([0,100,60]))
-    croplowl = torch.le(croplow,torch.Tensor([15,255,255]))
-    croplowg = torch.all(croplowg,dim=2)
-    croplowl = torch.all(croplowl,dim=2)
-    reslow = torch.logical_and(croplowl, croplowg)
-
-
-    crophighg = torch.ge(crophigh,torch.Tensor([145,100,60]))
-    crophighl = torch.le(crophigh,torch.Tensor([179,255,255]))
-    crophighg = torch.all(crophighg,dim=2)
-    crophighl = torch.all(crophighl,dim=2)
-    reshigh = torch.logical_and(crophighg, crophighl)
-
-
-    res = torch.logical_or(reslow, reshigh)
-    res = torch.sum(res==True).item()
-    ratio = res/area
-    if ratio >= 0.3:
-        return True
-    else:
-        return False
 
 def detect_simple(opt, path, img0, frame):
 
@@ -293,7 +258,7 @@ def detect_simple(opt, path, img0, frame):
     t2 = time_synchronized()
 
     # Apply NMS
-    pred = non_max_suppression(pred, opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
+    pred = non_max_suppression_with_red_ratio(pred, img0, img ,opt.conf_thres, opt.iou_thres, classes=opt.classes, agnostic=opt.agnostic_nms)
     t3 = time_synchronized()
 
     bbox = []
@@ -306,7 +271,7 @@ def detect_simple(opt, path, img0, frame):
 
             # Write results
             for *xyxy, conf, cls in reversed(det):
-                valid = filter(xyxy,im0)
+                ratio,valid = filter(xyxy,im0)
                 if not valid: continue
                 
                 if save_txt:  # Write to file
