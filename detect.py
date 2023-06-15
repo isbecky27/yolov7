@@ -271,8 +271,8 @@ def detect_simple(opt, path, img0, frame):
 
             # Write results
             for *xyxy, conf, cls in reversed(det):
-                ratio,valid = filter(xyxy,im0)
-                if not valid: continue
+                # ratio,valid = filter(xyxy,im0)
+                # if not valid: continue
                 
                 if save_txt:  # Write to file
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
